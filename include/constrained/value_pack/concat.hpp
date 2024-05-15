@@ -19,4 +19,20 @@ namespace ct {
         template <auto... Xs>
         using type = value_pack<Xs..., Ys...>;
     };
+
+    template <class Head, class... Tail>
+    struct concat_many
+    {
+        using type = Head
+            ::template then<concat_pack<
+                typename concat_many<Tail...>::type
+            >>;
+    };
+
+    template <class Lhs, class Rhs>
+    struct concat_many<Lhs, Rhs>
+    {
+        using type = Lhs
+            ::template then<concat_pack<Rhs>>;
+    };
 } // namespace ct

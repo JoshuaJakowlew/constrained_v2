@@ -2,28 +2,12 @@
 
 #include <constrained/value_pack/value_pack.hpp>
 
-#include <concepts>
+#include <type_traits>
 
 #include <constrained/value_pack/contains.hpp>
 #include <constrained/value_pack/concat.hpp>
 
-namespace ct {
-    template <class P1, class... Tail>
-    struct concat_many
-    {
-        using type = P1
-            ::template then<concat_pack<
-                typename concat_many<Tail...>::type
-            >>;
-    };
-
-    template <class P1, class P2>
-    struct concat_many<P1, P2>
-    {
-        using type = P1
-            ::template then<concat_pack<P2>>;
-    };
-
+namespace ct::detail {
     template <auto, class, class>
     struct diff_impl;
 
@@ -43,12 +27,17 @@ namespace ct {
     public:
         using type = concat_many<empty_if_contains<Xs>...>::type;
     };
+} // namespace ct::detail
 
+namespace ct {
     template <auto Eq, auto... Ys>
     struct diff_with
     {
         template <auto... Xs>
-        using type = diff_impl<Eq, value_pack<Xs...>, value_pack<Ys...>>::type;
+        using type = detail::diff_impl<
+            Eq, value_pack<Xs...>,
+            value_pack<Ys...>
+        >::type;
     };
 
     template <auto... Ys>
