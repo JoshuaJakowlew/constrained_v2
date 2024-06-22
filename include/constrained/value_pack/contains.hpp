@@ -9,8 +9,8 @@ namespace ct::detail {
     struct contains_impl
     {
         static constexpr bool value =
-            Needle == Head ? true
-                           : contains_impl<Eq, Needle, Tail...>::value;
+            Eq(Needle, Head) ? true
+                             : contains_impl<Eq, Needle, Tail...>::value;
     };
 
     template <auto Eq, auto Needle, auto Head>

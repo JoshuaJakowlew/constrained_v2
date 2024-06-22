@@ -18,5 +18,4 @@ namespace ct {
         template <class F>
         using then = F::template type<Xs...>;
     };
-
 } // namespace ct

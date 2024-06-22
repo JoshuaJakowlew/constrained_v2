@@ -35,11 +35,25 @@ namespace ct {
     {
         template <auto... Xs>
         using type = detail::diff_impl<
-            Eq, value_pack<Xs...>,
+            Eq,
+            value_pack<Xs...>,
             value_pack<Ys...>
         >::type;
     };
 
     template <auto... Ys>
     using diff = diff_with<std::equal_to<>{}, Ys...>;
+
+    template <auto Eq, class P>
+    struct diff_with_pack;
+
+    template <auto Eq, auto... Ys>
+    struct diff_with_pack<Eq, value_pack<Ys...>>
+    {
+        template <auto... Xs>
+        using type = diff_with<Eq, Ys...>::template type<Xs...>;
+    };
+
+    template <typename Pack>
+    using diff_pack = diff_with_pack<std::equal_to<>{}, Pack>;
 } // namespace ct

@@ -13,15 +13,18 @@ namespace ct {
     template <class P>
     struct concat_pack;
 
-    template <template <auto...> class P, auto... Ys>
-    struct concat_pack<P<Ys...>>
+    template <auto... Ys>
+    struct concat_pack<value_pack<Ys...>>
     {
         template <auto... Xs>
         using type = value_pack<Xs..., Ys...>;
     };
 
+    template <class... Packs>
+    struct concat_many;
+
     template <class Head, class... Tail>
-    struct concat_many
+    struct concat_many<Head, Tail...>
     {
         using type = Head
             ::template then<concat_pack<
@@ -34,5 +37,17 @@ namespace ct {
     {
         using type = Lhs
             ::template then<concat_pack<Rhs>>;
+    };
+
+    template <class Single>
+    struct concat_many<Single>
+    {
+        using type = Single;
+    };
+
+    template <>
+    struct concat_many<>
+    {
+        using type = value_pack<>;
     };
 } // namespace ct
