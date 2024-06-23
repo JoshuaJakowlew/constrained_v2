@@ -8,52 +8,60 @@
 #include <constrained/value_pack/concat.hpp>
 
 namespace ct::detail {
-    template <auto, class, class>
-    struct diff_impl;
+    template <auto Eq, auto... Xs>
+    struct diff_impl {};
 
-    template <auto Eq, auto... Xs, auto... Ys>
-    struct diff_impl<Eq, value_pack<Xs...>, value_pack<Ys...>>
+    template <auto Eq, auto Head, auto... Tail>
+    struct diff_impl<Eq, Head, Tail...>
     {
     private:
-        template <auto X>
-        using empty_if_contains = std::conditional_t<
-            std::same_as<
-                typename contains<X, Eq>::template type<Ys...>,
-                value_pack<true>
-            >,
-            value_pack<>,
-            value_pack<X>
+        template <auto... Ys>
+        using head = std::conditional_t<
+            value_pack<Ys...>
+                ::template then<contains<Head>>
+                ::unwrap,
+            empty,
+            value_pack<Head>    
         >;
+
+        template <auto... Ys>
+        using tail = diff_impl<Eq, Tail...>
+            ::template type<Ys...>;
+
     public:
-        using type = concat_many<empty_if_contains<Xs>...>::type;
+        template <auto... Ys>
+        using type = head<Ys...>::template then<concat_pack<tail<Ys...>>>;
+    };
+
+    template <auto Eq, auto Head>
+    struct diff_impl<Eq, Head>
+    {
+        template <auto... Ys>
+        using type = std::conditional_t<
+            value_pack<Ys...>
+                ::template then<contains<Head>>
+                ::unwrap,
+            empty,
+            value_pack<Head>    
+        >;
+    };
+
+    template <auto Eq>
+    struct diff_impl<Eq>
+    {
+        template <auto... Ys>
+        using type = empty;
     };
 } // namespace ct::detail
 
 namespace ct {
     template <auto Eq, auto... Ys>
-    struct diff_with
+    struct diff
     {
         template <auto... Xs>
-        using type = detail::diff_impl<
-            Eq,
-            value_pack<Xs...>,
-            value_pack<Ys...>
-        >::type;
+        using type = detail::diff_impl<Eq, Xs...>::template type<Ys...>;
     };
 
     template <auto... Ys>
-    using diff = diff_with<std::equal_to<>{}, Ys...>;
-
-    template <auto Eq, class P>
-    struct diff_with_pack;
-
-    template <auto Eq, auto... Ys>
-    struct diff_with_pack<Eq, value_pack<Ys...>>
-    {
-        template <auto... Xs>
-        using type = diff_with<Eq, Ys...>::template type<Xs...>;
-    };
-
-    template <typename Pack>
-    using diff_pack = diff_with_pack<std::equal_to<>{}, Pack>;
+    using diff_by_eq = diff<std::equal_to<>{}, Ys...>;
 } // namespace ct

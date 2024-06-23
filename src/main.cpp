@@ -129,11 +129,11 @@ int main()
 
     // static_assert(, );
 
-    constrained_type<int, is_even{}, fail, is_even{}> ct1(4);
-    constrained_type<int, gt_3{}, fail, is_even{}> ct2(ct1);
+    // constrained_type<int, is_even{}, fail, is_even{}> ct1(4);
+    // constrained_type<int, gt_3{}, fail, is_even{}> ct2(ct1);
 
     // constrained_type<int, all<gt_3{}>{}, fail, is_even{}>::constrained_type()
 
-    std::cout << "ct1 valid: " << (int)ct1.valid() << std::endl;
-    std::cout << "ct2 valid: " << (int)ct2.valid() << std::endl;
+    // std::cout << "ct1 valid: " << (int)ct1.valid() << std::endl;
+    // std::cout << "ct2 valid: " << (int)ct2.valid() << std::endl;
 }
