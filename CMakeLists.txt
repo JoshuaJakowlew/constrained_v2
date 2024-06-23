@@ -31,13 +31,16 @@ target_include_directories(${PROJECT_NAME}
 
 add_executable(${PROJECT_NAME}-tests
     tests/main.cpp
-    tests/value_pack.cpp
-    tests/concat.cpp
-    tests/to.cpp
-    tests/fold.cpp
-    tests/contains.cpp
-    tests/filter.cpp
-    tests/diff.cpp
+    
+    tests/value_pack/value_pack.cpp
+    tests/value_pack/concat.cpp
+    tests/value_pack/to.cpp
+    tests/value_pack/fold.cpp
+    tests/value_pack/contains.cpp
+    tests/value_pack/filter.cpp
+    tests/value_pack/diff.cpp
+
+    tests/optimizer/optimizer.cpp
 )
 
 set_target_properties(${PROJECT_NAME}-tests PROPERTIES
