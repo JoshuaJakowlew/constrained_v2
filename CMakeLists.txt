@@ -39,6 +39,7 @@ add_executable(${PROJECT_NAME}-tests
     tests/value_pack/contains.cpp
     tests/value_pack/filter.cpp
     tests/value_pack/diff.cpp
+    tests/value_pack/unique.cpp
 
     tests/optimizer/optimizer.cpp
 )
