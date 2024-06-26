@@ -5,8 +5,7 @@
 
 #include <functional>
 
-namespace ct {
-
+namespace ct::detail {
     template <auto Eq, auto X>
     struct not_equal
     {
@@ -53,11 +52,13 @@ namespace ct {
     {
         using type = empty;
     };
+} // namespace ct::detail
 
+namespace ct {
     template <auto Eq = std::equal_to<>{}>
     struct unique
     {
         template <auto... Xs>
-        using type = unique_impl<Eq, Xs...>::type;
+        using type = detail::unique_impl<Eq, Xs...>::type;
     };
 } // namespace ct
