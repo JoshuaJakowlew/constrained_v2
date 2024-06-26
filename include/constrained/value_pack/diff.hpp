@@ -18,7 +18,7 @@ namespace ct::detail {
         template <auto... Ys>
         using head = std::conditional_t<
             value_pack<Ys...>
-                ::template then<contains<Head>>
+                ::template then<contains<Head, Eq>>
                 ::unwrap,
             empty,
             value_pack<Head>    
@@ -39,7 +39,7 @@ namespace ct::detail {
         template <auto... Ys>
         using type = std::conditional_t<
             value_pack<Ys...>
-                ::template then<contains<Head>>
+                ::template then<contains<Head, Eq>>
                 ::unwrap,
             empty,
             value_pack<Head>    
