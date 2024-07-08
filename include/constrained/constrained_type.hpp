@@ -5,13 +5,13 @@
 
 #include <iostream>
 
-#include <constrained/optimizers/optimizer.hpp>
-#include <constrained/optimizers/all.hpp>
+#include <constrained/optimizer/optimizer.hpp>
+#include <constrained/optimizer/all.hpp>
 #include <constrained/combinators/all.hpp>
 #include <constrained/value_pack/to.hpp>
 
 namespace ct {
-    constexpr auto type_eq = []<class T, class U>(T const & x, U const & y) {
+    inline constexpr auto type_eq = []<class T, class U>(T const & x, U const & y) {
         return std::same_as<T, U>;
     };
 
@@ -33,10 +33,33 @@ namespace ct {
         fail_handler<F, T> and
         std::is_nothrow_invocable_v<F, T &>;
 
+    namespace detail {
+        template <typename P, typename T>
+        struct is_predicate_pack : std::false_type {};
+
+        template <auto... Ps, typename T>
+            requires (... && predicate<decltype(Ps), T>)
+        struct is_predicate_pack<value_pack<Ps...>, T> : std::true_type {};
+
+        template <typename P, typename T>
+        struct is_fail_handler_pack : std::false_type {};
+
+        template <auto... Hs, typename T>
+            requires (... && fail_handler<decltype(Hs), T>)
+        struct is_fail_handler_pack<value_pack<Hs...>, T> : std::true_type {};
+    } // namespace detail
+
+    template <typename Pack, typename T>
+    concept predicate_pack = detail::is_predicate_pack<Pack, T>::value;
+
+    template <typename Pack, typename T>
+    concept fail_handler_pack = detail::is_fail_handler_pack<Pack, T>::value;
+
     struct is_even {
         constexpr bool operator ()(auto x) const {
             std::cout  << "[is_even]\n";
             return x % 2 == 0;
+
         }
     };
 
@@ -47,83 +70,74 @@ namespace ct {
         }
     };
 
+    struct nocheck {};
+
     template <
         typename T,
-        auto Predicate,
-        auto Fail,
-        auto HasValue = Predicate
+        typename ConstraintPack,
+        typename OnFailPack,
+        typename HasValuePack = ConstraintPack
     >
         requires
-            predicate<decltype(Predicate), T> and
-            fail_handler<decltype(Fail), T> and
-            predicate<decltype(HasValue), T>
+            predicate_pack<ConstraintPack, T> and
+            fail_handler_pack<OnFailPack, T> and
+            predicate_pack<HasValuePack, T>
 
     class constrained_type
     {
     public:
         constexpr constrained_type() 
+            noexcept(
+                std::is_nothrow_default_constructible_v<T> and
+                noexcept(check(ConstraintPack{}))
+            )
+            requires std::is_default_constructible_v<T>
+        {
+            std::puts("default constructor");
+            check(ConstraintPack{});
+        }
+
+        constexpr constrained_type(nocheck)
             noexcept(std::is_nothrow_default_constructible_v<T>)
             requires std::is_default_constructible_v<T>
-        {}
+        {
+            std::puts("default nocheck constructor");
+        };
 
         template <typename... Args>
         constexpr constrained_type(Args&&... args)
             noexcept(
                 std::is_nothrow_constructible_v<T, Args...> and
-                noexcept(check())
+                noexcept(check(ConstraintPack{}))
             )
             requires std::is_constructible_v<T, Args...>
             : _value(std::forward<Args>(args)...)
         { 
             std::puts("emplace constructor");
-            check<Predicate>();
+            check(ConstraintPack{});
         }
 
         constexpr constrained_type(constrained_type const & other)
             : _value(other._value)
         {
-            std::puts("copy constructor");
+            std::puts("copy constructor (no checks performed)");
         }
 
-        template <auto FromPredicate, auto Eq = type_eq>
-        constexpr constrained_type(constrained_type<T, FromPredicate, Fail, HasValue> const & other)
-            // noexcept
-            // requires
+        template <auto Eq = type_eq, predicate_pack<T> RhsConstraints>
+            requires (!std::same_as<ConstraintPack, RhsConstraints>)
+        constexpr constrained_type(constrained_type<T, RhsConstraints, OnFailPack, HasValuePack> const & other)
             : _value(other.value())
         {
-            // TODO: this copy constructor must use optimizer
-            
-            using from_t = std::decay_t<decltype(FromPredicate)>;
-            using to_t = std::decay_t<decltype(Predicate)>;
-
-            using passed_from_t = std::conditional_t<combinator<from_t>, from_t, value_pack<from_t{}>>;
-            using passed_to_t = std::conditional_t<combinator<to_t>, to_t, value_pack<to_t{}>>;
-
-            // static_assert(std::same_as<all<is_even{}>, all<is_even{}>>);
-            // static_assert(std::same_as<passed_from_t, all<is_even{}>>);
-            // static_assert(std::same_as<passed_to_t, all<gt_3{}, is_even{}>>);
-
-            using OptT = optimizer<Eq, passed_from_t, passed_to_t>::type;
-            // static_assert(std::same_as<OptT, all<is_even{}>{}>>);
-            check<OptT{}>();
-
-            // using predicate_pack = optimizer<Eq, std::decay_t<decltype(FromPredicate)>, std::decay_t<decltype(Predicate)>>
-            //     ::type;
-            std::puts("other copy constructor");
-            // predicate_pack{}(_value);
-            // check<predicate_pack{}>();
-
-            // using opt3 = optimizer<
-            //     type_eq,
-            //     const all<is_even{}>,
-            //     const all<gt_3{}, is_even{}>
-            // >::type;
-            // static_assert(std::same_as<opt3, all<gt_3{}>>);
+            std::puts("create from other constructor");
+            using constraints = optimize_pass<Eq, RhsConstraints, ConstraintPack>::type::result;
+            if (valid()) check(constraints{});
         }
 
         constexpr bool valid() const
-            noexcept(nothrow_predicate<decltype(HasValue), T>)
-        { return HasValue(_value); }
+            noexcept(noexcept(valid_impl(HasValuePack{})))
+        {
+            return valid_impl(HasValuePack{});
+        }
 
         constexpr explicit operator bool () const
             noexcept(valid())
@@ -136,24 +150,33 @@ namespace ct {
         constexpr auto value() const && noexcept -> T const &&
         { return std::move(_value); }
     private:
-        T _value;
+        T _value{}; // TODO: Allow non-initializing deafult construction via flags like nocheck
 
-        template <auto... Ps>
-        constexpr void check()
-            noexcept(
-                (... && nothrow_predicate<decltype(Ps), T>) and
-                noexcept(fail())
-            )
+        template <auto... Validator>
+        constexpr bool valid_impl(value_pack<Validator...>) const
+            noexcept(noexcept((... && Validator(_value))))
         {
-            std::cout << "check: sizeof...(Ps) == " << sizeof...(Ps) << std::endl;
-            if (!(... && Ps(_value)))
-                fail();
+            return (... && Validator(_value));
         }
 
-        constexpr void fail()
-            noexcept (nothrow_fail_handler<decltype(Fail), T>)
+        template <auto... Predicate>
+        constexpr void check(value_pack<Predicate...>)
+            noexcept(
+                noexcept(!(... && Predicate(_value))) and
+                noexcept(fail(OnFailPack{}))
+            )
         {
-            Fail(_value);
+            std::cout << "[";
+            if (!(... && Predicate(_value)))
+                fail(OnFailPack{});
+            std::cout << "]" << std::endl;
+        }
+
+        template <auto... FailHandler>
+        constexpr void fail(value_pack<FailHandler...>)
+            noexcept (noexcept((... , FailHandler(_value))))
+        {
+            (... , FailHandler(_value));
         }
     };
 } // namespace ct {
