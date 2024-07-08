@@ -30,18 +30,24 @@ target_include_directories(${PROJECT_NAME}
 # target_link_libraries(${PROJECT_NAME}-bin ${PROJECT_NAME})
 
 add_executable(${PROJECT_NAME}-tests
-    tests/main.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/main.cpp
     
-    tests/value_pack/value_pack.cpp
-    tests/value_pack/concat.cpp
-    tests/value_pack/to.cpp
-    tests/value_pack/fold.cpp
-    tests/value_pack/contains.cpp
-    tests/value_pack/filter.cpp
-    tests/value_pack/diff.cpp
-    tests/value_pack/unique.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/value_pack/value_pack.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/value_pack/concat.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/value_pack/to.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/value_pack/fold.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/value_pack/contains.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/value_pack/filter.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/value_pack/diff.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/value_pack/unique.cpp
 
-    tests/optimizer/optimizer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/optimizer/optimizer.cpp
+
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/constrained_type.cpp
+)
+
+target_include_directories(${PROJECT_NAME}-tests PRIVATE 
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/include
 )
 
 set_target_properties(${PROJECT_NAME}-tests PROPERTIES
