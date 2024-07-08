@@ -72,6 +72,7 @@ namespace ct {
 
     struct nocheck {};
 
+    // TODO: Optimize self predicates, fail handlers and validators
     template <
         typename T,
         typename ConstraintPack,
@@ -118,15 +119,35 @@ namespace ct {
         }
 
         constexpr constrained_type(constrained_type const & other)
-            : _value(other._value)
+            : _value(other.value())
         {
             std::puts("copy constructor (no checks performed)");
+        }
+
+        constexpr constrained_type(constrained_type && other)
+            noexcept(std::is_nothrow_move_constructible_v<T>)
+            requires std::move_constructible<T>
+            : _value(std::move(other).value())
+        {
+            std::puts("move constructor (no checks performed)");
         }
 
         template <auto Eq = type_eq, predicate_pack<T> RhsConstraints>
             requires (!std::same_as<ConstraintPack, RhsConstraints>)
         constexpr constrained_type(constrained_type<T, RhsConstraints, OnFailPack, HasValuePack> const & other)
+            // TODO: Add noexcept rules
             : _value(other.value())
+        {
+            std::puts("create from other constructor");
+            using constraints = optimize_pass<Eq, RhsConstraints, ConstraintPack>::type::result;
+            if (valid()) check(constraints{});
+        }
+
+        template <auto Eq = type_eq, predicate_pack<T> RhsConstraints>
+            requires (!std::same_as<ConstraintPack, RhsConstraints>)
+        constexpr constrained_type(constrained_type<T, RhsConstraints, OnFailPack, HasValuePack> && other)
+            // TODO: Add noexcept rules
+            : _value(std::move(other).value())
         {
             std::puts("create from other constructor");
             using constraints = optimize_pass<Eq, RhsConstraints, ConstraintPack>::type::result;
