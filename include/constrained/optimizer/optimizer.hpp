@@ -57,39 +57,17 @@ namespace ct {
         using type = optimize_pass_result<unique_from, unique_to, result>;
     };
 
-    // template <bool Loop, auto Eq, typename From, typename To>
-    // struct optimize_loop {};
-
-    // template <auto Eq, auto... Xs, auto... Ys>
-    // struct optimize_loop<true, Eq, value_pack<Xs...>, value_pack<Ys...>>
-    // {
-    //     using from = value_pack<Xs...>;
-    //     using to = value_pack<Ys...>;
-
-    //     using optimized = optimize_pass<Eq, from, to>::type;
-    //     using opt_from = optimized::from;
-    //     using opt_to = optimized::to;
-    //     using opt_res = optimized::result;
-
-    //     using type = optimize_loop<std::same_as<to, opt_res>, Eq, opt_from, opt_res>::type;
-
-    //     // using type = std::conditional_t<
-    //     //     std::same_as<to, opt_res>,
-    //     //     opt_res,
-    //     //     typename optimize_loop<Eq, opt_from, opt_res>::type
-    //     // >;
-    // };
-
-    // template <auto Eq, auto... Xs, auto... Ys>
-    // struct optimize_loop<false, Eq, value_pack<Xs...>, value_pack<Ys...>>
-    // {
-    //     using type = value_pack<Ys...>; 
-    // };
-
     template <auto Eq, typename From>
     struct optimize
     {
         template <auto... Xs>
         using type = optimize_pass<Eq, From, value_pack<Xs...>>::type::result;
+    };
+
+    template <auto Eq>
+    struct optimize_predicate_pack
+    {
+        template <auto... Xs>
+        using type = remove_duplicates_pass<Eq>::template type<Xs...>;
     };
 } // namespace ct

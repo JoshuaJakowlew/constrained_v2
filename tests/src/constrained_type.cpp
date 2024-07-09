@@ -32,7 +32,7 @@ namespace ct::test {
         return x >= 0;
     };
 
-    using even_int = constrained_type<int, value_pack<is_even>, value_pack<panic>, value_pack<valid>>;
+    using even_int = constrained_type<int, value_pack<is_even, is_even>, value_pack<panic>, value_pack<valid>>;
     using lt_gt_even_int = constrained_type<int, value_pack<is_even, lt_9, gt_3>, value_pack<panic>, value_pack<valid>>;
 
     void test_ct(auto const & x)

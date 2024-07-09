@@ -5,8 +5,7 @@
 
 #include <iostream>
 
-#include <constrained/optimizer/optimizer.hpp>
-#include <constrained/optimizer/all.hpp>
+#include <constrained/optimizer/constraints/optimize.hpp>
 #include <constrained/combinators/all.hpp>
 #include <constrained/value_pack/to.hpp>
 
@@ -55,21 +54,6 @@ namespace ct {
     template <typename Pack, typename T>
     concept fail_handler_pack = detail::is_fail_handler_pack<Pack, T>::value;
 
-    struct is_even {
-        constexpr bool operator ()(auto x) const {
-            std::cout  << "[is_even]\n";
-            return x % 2 == 0;
-
-        }
-    };
-
-    struct gt_3 {
-        constexpr bool operator ()(auto x) const {
-            std::cout << "[gt3]\n";
-            return x > 3;
-        }
-    };
-
     struct nocheck {};
 
     // TODO: Optimize self predicates, fail handlers and validators
@@ -77,7 +61,8 @@ namespace ct {
         typename T,
         typename ConstraintPack,
         typename OnFailPack,
-        typename HasValuePack = ConstraintPack
+        typename HasValuePack = ConstraintPack,
+        auto Eq = type_eq
     >
         requires
             predicate_pack<ConstraintPack, T> and
@@ -87,15 +72,19 @@ namespace ct {
     class constrained_type
     {
     public:
+
+        using Constraints = ConstraintPack
+            ::template then<constraints::pack::optimize<Eq>>;
+
         constexpr constrained_type() 
             noexcept(
                 std::is_nothrow_default_constructible_v<T> and
-                noexcept(check(ConstraintPack{}))
+                noexcept(check(Constraints{}))
             )
             requires std::is_default_constructible_v<T>
         {
             std::puts("default constructor");
-            check(ConstraintPack{});
+            check(Constraints{});
         }
 
         constexpr constrained_type(nocheck)
@@ -109,13 +98,13 @@ namespace ct {
         constexpr constrained_type(Args&&... args)
             noexcept(
                 std::is_nothrow_constructible_v<T, Args...> and
-                noexcept(check(ConstraintPack{}))
+                noexcept(check(Constraints{}))
             )
             requires std::is_constructible_v<T, Args...>
             : _value(std::forward<Args>(args)...)
         { 
             std::puts("emplace constructor");
-            check(ConstraintPack{});
+            check(Constraints{});
         }
 
         constexpr constrained_type(constrained_type const & other)
@@ -132,25 +121,27 @@ namespace ct {
             std::puts("move constructor (no checks performed)");
         }
 
-        template <auto Eq = type_eq, predicate_pack<T> RhsConstraints>
+        template <predicate_pack<T> RhsConstraints>
             requires (!std::same_as<ConstraintPack, RhsConstraints>)
         constexpr constrained_type(constrained_type<T, RhsConstraints, OnFailPack, HasValuePack> const & other)
             // TODO: Add noexcept rules
             : _value(other.value())
         {
             std::puts("create from other constructor");
-            using constraints = optimize_pass<Eq, RhsConstraints, ConstraintPack>::type::result;
+
+            // TODO: Move these check to separate method because it's the same in copy and move constructors
+            using constraints = Constraints::template then<constraints::construct::optimize<Eq, RhsConstraints>>;
             if (valid()) check(constraints{});
         }
 
-        template <auto Eq = type_eq, predicate_pack<T> RhsConstraints>
+        template <predicate_pack<T> RhsConstraints>
             requires (!std::same_as<ConstraintPack, RhsConstraints>)
         constexpr constrained_type(constrained_type<T, RhsConstraints, OnFailPack, HasValuePack> && other)
             // TODO: Add noexcept rules
             : _value(std::move(other).value())
         {
             std::puts("create from other constructor");
-            using constraints = optimize_pass<Eq, RhsConstraints, ConstraintPack>::type::result;
+            using constraints = Constraints::template then<constraints::construct::optimize<Eq, RhsConstraints>>;
             if (valid()) check(constraints{});
         }
 
