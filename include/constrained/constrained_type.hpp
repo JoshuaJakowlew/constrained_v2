@@ -111,92 +111,84 @@ namespace ct {
     class constrained_type
     {
     public:
+        using value_t = T;
         using optimized_constraints   = ConstraintPack::template then<constraints::pack::optimize<Eq>>;
         using optimized_fail_handlers = FailHandlerPack::template then<fail_handlers::pack::optimize<Eq>>;
         using optimized_validators    = ValidatorPack::template then<validators::pack::optimize<Eq>>;
 
-// #pragma region default_constructor
-//         constexpr constrained_type() 
-//             noexcept(
-//                 std::is_nothrow_default_constructible_v<T> and
-//                 noexcept(check(Constraints{}))
-//             )
-//             requires std::is_default_constructible_v<T>
-//         {
-//             std::puts("default constructor");
-//             check(Constraints{});
-//         }
-// #pragma endregion
+#pragma region default_constructor
+        constexpr constrained_type() 
+            noexcept(
+                std::is_nothrow_default_constructible_v<T> and
+                noexcept(check(optimized_constraints{}))
+            )
+            requires std::is_default_constructible_v<T>
+        {
+            check(optimized_constraints{});
+        }
+#pragma endregion
 
-// #pragma region default_nocheck_constructor
-//         constexpr constrained_type(nocheck)
-//             noexcept(std::is_nothrow_default_constructible_v<T>)
-//             requires std::is_default_constructible_v<T>
-//         {
-//             std::puts("default nocheck constructor");
-//         };
-// #pragma endregion
+#pragma region default_nocheck_constructor
+        constexpr constrained_type(nocheck)
+            noexcept(std::is_nothrow_default_constructible_v<T>)
+            requires std::is_default_constructible_v<T>
+        {
+        };
+#pragma endregion
 
-// #pragma region forwarding_coonstructor
-//         template <typename... Args>
-//         constexpr constrained_type(Args&&... args)
-//             noexcept(
-//                 std::is_nothrow_constructible_v<T, Args...> and
-//                 noexcept(check(Constraints{}))
-//             )
-//             requires std::is_constructible_v<T, Args...>
-//             : _value(std::forward<Args>(args)...)
-//         { 
-//             std::puts("emplace constructor");
-//             check(Constraints{});
-//         }
-// #pragma endregion
+#pragma region forwarding_constructor
+        template <typename... Args>
+        constexpr constrained_type(Args&&... args)
+            noexcept(
+                std::is_nothrow_constructible_v<T, Args...> and
+                noexcept(check(optimized_constraints{}))
+            )
+            requires std::is_constructible_v<T, Args...>
+            : _value(std::forward<Args>(args)...)
+        {
+            check(optimized_constraints{});
+        }
+#pragma endregion
 
-// #pragma region copy_constructor
-//         constexpr constrained_type(constrained_type const & other)
-//             : _value(other.value())
-//         {
-//             std::puts("copy constructor (no checks performed)");
-//         }
-// #pragma endregion 
+#pragma region copy_constructor
+        constexpr constrained_type(constrained_type const & other)
+            noexcept(std::is_nothrow_copy_constructible_v<T>)
+            requires std::copy_constructible<T>
+            : _value(other.value())
+        {
+        }
+#pragma endregion 
 
-// #pragma region move_constructor
-//         constexpr constrained_type(constrained_type && other)
-//             noexcept(std::is_nothrow_move_constructible_v<T>)
-//             requires std::move_constructible<T>
-//             : _value(std::move(other).value())
-//         {
-//             std::puts("move constructor (no checks performed)");
-//         }
-// #pragma endregion 
+#pragma region move_constructor
+        constexpr constrained_type(constrained_type && other)
+            noexcept(std::is_nothrow_move_constructible_v<T>)
+            requires std::move_constructible<T>
+            : _value(std::move(other).value())
+        {
+        }
+#pragma endregion 
 
-// #pragma region optimizing_copy_constructor
-//         template <predicate_pack<T> RhsConstraints>
-//             requires (!std::same_as<ConstraintPack, RhsConstraints>)
-//         constexpr constrained_type(constrained_type<T, RhsConstraints, OnFailPack, HasValuePack> const & other)
-//             // TODO: Add noexcept rules
-//             : _value(other.value())
-//         {
-//             std::puts("create from other constructor");
+#pragma region optimizing_copy_constructor
+        template <predicate_pack<T> RhsConstraintPack>
+        constexpr constrained_type(constrained_type<T, RhsConstraintPack, FailHandlerPack, ValidatorPack> const & other)
+            noexcept(std::is_nothrow_copy_constructible_v<T>)
+            requires std::copy_constructible<T>
+            : _value(other.value())
+        {
+            check_from_to<RhsConstraintPack>();
+        }
+#pragma endregion
 
-//             // TODO: Move these check to separate method because it's the same in copy and move constructors
-//             using constraints = Constraints::template then<constraints::construct::optimize<Eq, RhsConstraints>>;
-//             if (valid()) check(constraints{});
-//         }
-// #pragma endregion
-
-// #pragma region optimizing_move_constructor
-//         template <predicate_pack<T> RhsConstraints>
-//             requires (!std::same_as<ConstraintPack, RhsConstraints>)
-//         constexpr constrained_type(constrained_type<T, RhsConstraints, OnFailPack, HasValuePack> && other)
-//             // TODO: Add noexcept rules
-//             : _value(std::move(other).value())
-//         {
-//             std::puts("create from other constructor");
-//             using constraints = Constraints::template then<constraints::construct::optimize<Eq, RhsConstraints>>;
-//             if (valid()) check(constraints{});
-//         }
-// #pragma endregion
+#pragma region optimizing_move_constructor
+        template <predicate_pack<T> RhsConstraintPack>
+        constexpr constrained_type(constrained_type<T, RhsConstraintPack, FailHandlerPack, ValidatorPack> && other)
+            noexcept(std::is_nothrow_move_constructible_v<T>)
+            requires std::move_constructible<T>
+            : _value(std::move(other).value())
+        {
+            check_from_to<RhsConstraintPack>();
+        }
+#pragma endregion
 
         constexpr bool valid() const
             noexcept(noexcept(validate(optimized_validators{})))
@@ -218,6 +210,23 @@ namespace ct {
         { return std::move(_value); }
     private:
         T _value{};
+
+#pragma region check_from_to
+        template <predicate_pack<T> RhsConstraintPack>
+        using optimized_from_to_constraints = ConstraintPack
+            ::template then<constraints::construct::optimize<Eq, RhsConstraintPack>>;
+
+        template <predicate_pack<T> RhsConstraintPack>
+        constexpr void check_from_to()
+            noexcept(
+                noexcept(valid()) and
+                noexcept(check(optimized_from_to_constraints<RhsConstraintPack>{}))
+            )
+        {
+            if (valid()) // if invalid - no need for checks as validators are the same
+                check(optimized_from_to_constraints<RhsConstraintPack>{});
+        }
+#pragma endregion
 
         template <auto... Ps>
         constexpr void check(value_pack<Ps...>)
@@ -244,4 +253,4 @@ namespace ct {
             return (... && Vs(_value));
         }
     };
-} // namespace ct {
+} // namespace ct
