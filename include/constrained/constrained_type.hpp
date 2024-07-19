@@ -198,22 +198,24 @@ namespace ct {
 //         }
 // #pragma endregion
 
-        // constexpr bool valid() const
-        //     noexcept(noexcept(valid_impl(HasValuePack{})))
-        // {
-        //     return valid_impl(HasValuePack{});
-        // }
+        constexpr bool valid() const
+            noexcept(noexcept(validate(optimized_validators{})))
+        {
+            return validate(optimized_validators{});
+        }
 
-        // constexpr explicit operator bool () const
-        //     noexcept(valid())
-        // { return valid(); }
+        constexpr explicit operator bool () const
+            noexcept(noexcept(valid()))
+        {
+            return valid();
+        }
 
-        // constexpr auto value() const & noexcept -> T const &
-        // { return _value; }
-        // constexpr auto value() && noexcept -> T &&
-        // { return std::move(_value); }
-        // constexpr auto value() const && noexcept -> T const &&
-        // { return std::move(_value); }
+        constexpr auto value() const & noexcept -> T const &
+        { return _value; }
+        constexpr auto value() && noexcept -> T &&
+        { return std::move(_value); }
+        constexpr auto value() const && noexcept -> T const &&
+        { return std::move(_value); }
     private:
         T _value{};
 
