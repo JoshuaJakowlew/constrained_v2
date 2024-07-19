@@ -68,7 +68,7 @@ namespace ct {
     concept fail_handler_pack = detail::is_fail_handler_pack<Pack, T>::value;
 
     template <typename Pack, typename T>
-    concept validator_pack = detail::is_fail_handler_pack<Pack, T>::value;
+    concept validator_pack = predicate_pack<Pack, T>;
 #pragma endregion
 
     struct nocheck {};
@@ -76,16 +76,11 @@ namespace ct {
     // TODO: Optimize self predicates, fail handlers and validators
     template <
         typename T,
-        typename ConstraintPack,
-        typename FailHandlerPack,
-        typename ValidatorPack = ConstraintPack,
+        predicate_pack<T> ConstraintPack,
+        fail_handler_pack<T> FailHandlerPack,
+        validator_pack<T> ValidatorPack = ConstraintPack,
         auto Eq = type_eq
     >
-        requires
-            predicate_pack<ConstraintPack, T> and
-            fail_handler_pack<FailHandlerPack, T> and
-            predicate_pack<ValidatorPack, T>
-
     class constrained_type
     {
     public:
