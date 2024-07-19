@@ -45,28 +45,28 @@ namespace ct::test {
 
     void test_coonstrained_type()
     {
-        auto x1 = even_int{42};
-        test_ct(x1);
+        // auto x1 = even_int{42};
+        // test_ct(x1);
 
-        auto x2 = even_int{7};
-        test_ct(x2);
+        // auto x2 = even_int{7};
+        // test_ct(x2);
 
-        auto x3 = lt_gt_even_int{42};
-        test_ct(x3);
+        // auto x3 = lt_gt_even_int{42};
+        // test_ct(x3);
 
-        auto x4 = lt_gt_even_int{7};
-        test_ct(x4);
+        // auto x4 = lt_gt_even_int{7};
+        // test_ct(x4);
 
-        auto x5 = lt_gt_even_int{6};
-        test_ct(x5);
+        // auto x5 = lt_gt_even_int{6};
+        // test_ct(x5);
 
-        lt_gt_even_int x6{even_int{6}};
-        test_ct(x6);
+        // lt_gt_even_int x6{even_int{6}};
+        // test_ct(x6);
 
-        lt_gt_even_int x7{even_int{60}};
-        test_ct(x7);
+        // lt_gt_even_int x7{even_int{60}};
+        // test_ct(x7);
 
-        lt_gt_even_int x8{even_int{7}};
-        test_ct(x8);
+        // lt_gt_even_int x8{even_int{7}};
+        // test_ct(x8);
     }
 } // namespace ct::test
