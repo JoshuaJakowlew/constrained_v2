@@ -50,6 +50,14 @@ namespace ct {
             requires (... && predicate<decltype(Ps), T>)
         struct is_predicate_pack<value_pack<Ps...>, T> : std::true_type {};
 
+        template <typename P, typename T>
+        struct is_nothrow_predicate_pack : std::false_type {};
+
+        template <auto... Ps, typename T>
+            requires (... && nothrow_predicate<decltype(Ps), T>)
+        struct is_nothrow_predicate_pack<value_pack<Ps...>, T> : std::true_type {};
+
+
         template <typename H, typename T>
         struct is_fail_handler_pack : std::false_type {};
 
@@ -57,18 +65,37 @@ namespace ct {
             requires (... && fail_handler<decltype(Hs), T>)
         struct is_fail_handler_pack<value_pack<Hs...>, T> : std::true_type {};
 
+        template <typename H, typename T>
+        struct is_nothrow_fail_handler_pack : std::false_type {};
+
+        template <auto... Hs, typename T>
+            requires (... && nothrow_fail_handler<decltype(Hs), T>)
+        struct is_nothrow_fail_handler_pack<value_pack<Hs...>, T> : std::true_type {};
+
         template <typename P, typename T>
         struct is_validator_pack : is_predicate_pack<P, T> {};
+
+        template <typename P, typename T>
+        struct is_nothrow_validator_pack : is_nothrow_predicate_pack<P, T> {};
     } // namespace detail
 
     template <typename Pack, typename T>
     concept predicate_pack = detail::is_predicate_pack<Pack, T>::value;
 
     template <typename Pack, typename T>
+    concept nothrow_predicate_pack = detail::is_nothrow_predicate_pack<Pack, T>::value;
+
+    template <typename Pack, typename T>
     concept fail_handler_pack = detail::is_fail_handler_pack<Pack, T>::value;
 
     template <typename Pack, typename T>
+    concept nothrow_fail_handler_pack = detail::is_nothrow_fail_handler_pack<Pack, T>::value;
+
+    template <typename Pack, typename T>
     concept validator_pack = predicate_pack<Pack, T>;
+
+    template <typename Pack, typename T>
+    concept nothrow_validator_pack = nothrow_predicate_pack<Pack, T>;
 #pragma endregion
 
     struct nocheck {};
@@ -190,12 +217,7 @@ namespace ct {
     private:
         T _value{}; // TODO: Allow non-initializing deafult construction via flags like nocheck
 
-        // template <auto... Validator>
-        // constexpr bool valid_impl(value_pack<Validator...>) const
-        //     noexcept(noexcept((... && Validator(_value))))
-        // {
-        //     return (... && Validator(_value));
-        // }
+        
 
         // template <auto... Predicate>
         // constexpr void check(value_pack<Predicate...>)
@@ -210,11 +232,11 @@ namespace ct {
         //     std::cout << "]" << std::endl;
         // }
 
-        // template <auto... FailHandler>
-        // constexpr void fail(value_pack<FailHandler...>)
-        //     noexcept (noexcept((... , FailHandler(_value))))
-        // {
-        //     (... , FailHandler(_value));
-        // }
+        template <auto... Fs>
+        constexpr void fail(value_pack<Fs...>)
+            noexcept(nothrow_fail_handler_pack<value_pack<Fs...>, T>)
+        {
+            (... , Fs(_value));
+        }
     };
 } // namespace ct {
