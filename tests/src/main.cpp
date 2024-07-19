@@ -1,8 +1,2 @@
-#include <iostream>
-
-#include <constrained_type.hpp>
-
-int main()
-{
-   ct::test::test_coonstrained_type();    
-}
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include <doctest/doctest.h>
