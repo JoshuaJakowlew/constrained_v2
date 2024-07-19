@@ -215,28 +215,31 @@ namespace ct {
         // constexpr auto value() const && noexcept -> T const &&
         // { return std::move(_value); }
     private:
-        T _value{}; // TODO: Allow non-initializing deafult construction via flags like nocheck
+        T _value{};
 
-        
-
-        // template <auto... Predicate>
-        // constexpr void check(value_pack<Predicate...>)
-        //     noexcept(
-        //         noexcept(!(... && Predicate(_value))) and
-        //         noexcept(fail(OnFailPack{}))
-        //     )
-        // {
-        //     std::cout << "[";
-        //     if (!(... && Predicate(_value)))
-        //         fail(OnFailPack{});
-        //     std::cout << "]" << std::endl;
-        // }
+        template <auto... Ps>
+        constexpr void check(value_pack<Ps...>)
+            noexcept(
+                nothrow_predicate_pack<value_pack<Ps...>, T> and
+                noexcept(fail(optimized_fail_handlers{}))
+            )
+        {
+            if (!(... && Ps(_value)))
+                fail(optimized_fail_handlers{});
+        }
 
         template <auto... Fs>
         constexpr void fail(value_pack<Fs...>)
             noexcept(nothrow_fail_handler_pack<value_pack<Fs...>, T>)
         {
             (... , Fs(_value));
+        }
+
+        template <auto... Vs>
+        constexpr bool validate(value_pack<Vs...>) const
+            noexcept(nothrow_validator_pack<value_pack<Vs...>, T>)
+        {
+            return (... && Vs(_value));
         }
     };
 } // namespace ct {
