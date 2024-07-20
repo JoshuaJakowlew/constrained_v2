@@ -2,7 +2,7 @@
 
 #include <concepts>
 #include <utility>
-
+#include <optional>
 #include <iostream>
 
 #include <constrained/optimizer/constraints/optimize.hpp>
@@ -202,12 +202,75 @@ namespace ct {
             return valid();
         }
 
+#pragma region value
         constexpr auto value() const & noexcept -> T const &
         { return _value; }
         constexpr auto value() && noexcept -> T &&
         { return std::move(_value); }
         constexpr auto value() const && noexcept -> T const &&
         { return std::move(_value); }
+#pragma endregion value
+
+#pragma region value_or
+        template <std::convertible_to<T> U>
+        constexpr auto value_or(U && default_value) const &
+            noexcept(noexcept(valid()) and std::is_nothrow_constructible_v<T, U>)
+            -> T
+        {
+            if (valid()) return _value;
+            return static_cast<T>(std::forward<U>(default_value));
+        }
+
+        template <std::convertible_to<T> U>
+        constexpr auto value_or(U && default_value) &&
+            noexcept(noexcept(valid()) and std::is_nothrow_constructible_v<T, U>)
+            -> T
+        {
+            if (valid()) return std::move(_value);
+            return static_cast<T>(std::forward<U>(default_value));
+        }
+#pragma endregion
+
+#pragma region to_optional
+        template <template <typename> typename Optional = std::optional>
+        constexpr auto to_optional() const &
+            noexcept(
+                noexcept(valid()) and
+                std::is_nothrow_constructible_v<Optional<T>, T const &>
+            )
+            -> Optional<T>
+            requires std::constructible_from<Optional<T>, T const &>
+        {
+            if (!valid()) return std::nullopt;
+            return Optional(_value);
+        }
+
+        template <template <typename> typename Optional = std::optional>
+        constexpr auto to_optional() &&
+            noexcept(
+                noexcept(valid()) and
+                std::is_nothrow_constructible_v<Optional<T>, T &&>
+            )
+            -> Optional<T>
+            requires std::constructible_from<Optional<T>, T &&>
+        {
+            if (!valid()) return std::nullopt;
+            return Optional(std::move(_value));
+        }
+
+        template <template <typename> typename Optional = std::optional>
+        constexpr auto to_optional() const &&
+            noexcept(
+                noexcept(valid()) and
+                std::is_nothrow_constructible_v<Optional<T>, T const &&>
+            )
+            -> Optional<T>
+            requires std::constructible_from<Optional<T>, T const &&>
+        {
+            if (!valid()) return std::nullopt;
+            return Optional(std::move(_value));
+        }
+#pragma endregion
     private:
         T _value{};
 

@@ -40,7 +40,7 @@ namespace ct::test {
     constexpr auto gte_0 = [](auto const & x) { return x >= 0; };
     constexpr auto gt_0 = [](auto const & x) { return x > 0; };
 
-    TEST_SUITE("constrained_type") {
+    TEST_SUITE("constrained_type constructors") {
         static bool fail_called = false;
         static bool check_called = false;
 
@@ -291,6 +291,77 @@ namespace ct::test {
 
                 CHECK(from_invalid.value() == moved_from);
                 CHECK(from_invalid.valid());
+            }
+        }
+    }
+
+    TEST_SUITE("constrained_type value accessors") {
+        struct counter
+        {
+            counter() = default;
+            counter (const counter & c) noexcept
+                : copies(c.copies + 1)
+                , moves(c.moves)
+                , moved_from(c.moved_from)
+                , valid(c.valid)
+            {}
+            counter (counter && c)
+                : copies(c.copies)
+                , moves(c.moves + 1)
+                , moved_from(c.moved_from)
+                , valid(c.valid)
+            {
+                c.moved_from = true;
+            }
+            std::size_t copies{};
+            std::size_t moves{};
+            bool moved_from = false;
+            bool valid = true;
+        };
+
+        constexpr auto is_valid_counter = [](counter const & c) { return c.valid; };
+        using valid_counter = constrained_type<counter, value_pack<is_valid_counter>, value_pack<[](auto&){}>>;
+
+        TEST_CASE("value") {
+            counter valid_c;
+            counter invalid_c; invalid_c.valid = false;
+
+            valid_counter vc{valid_c};
+            valid_counter inv_vc{invalid_c};
+
+            SUBCASE("value") {
+                const auto & c1 = vc.value();
+                CHECK(c1.copies == 1);
+                CHECK(c1.moves == 0);
+
+                auto c2 = std::move(vc).value();
+                CHECK(c2.copies == 1);
+                CHECK(c2.moves == 1);
+
+                const auto c3 = std::move(std::as_const(vc)).value();
+                CHECK(c3.copies == 2);
+                CHECK(c3.moves == 0);
+
+                CHECK(vc.value().moved_from);
+            }
+
+            SUBCASE("value_or") {
+                const auto c1 = inv_vc.value_or(valid_c);
+                CHECK(c1.valid);
+                
+                auto c2 = inv_vc.value_or(std::move(valid_c));
+                CHECK(c2.valid);
+
+                const auto c3 = vc.value_or(invalid_c);
+                CHECK(c3.valid);
+                
+                auto c4 = inv_vc.value_or(std::move(valid_c));
+                CHECK(c4.valid);
+            }
+
+            SUBCASE("to_optional") {
+                CHECK(vc.to_optional().has_value());
+                CHECK_FALSE(inv_vc.to_optional().has_value());
             }
         }
     }
