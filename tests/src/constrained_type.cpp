@@ -401,7 +401,4 @@ namespace ct::test {
             }
         }
     }
-
-    std::optional<int> x{42};
-    auto c = x.value();
 } // namespace ct::test
