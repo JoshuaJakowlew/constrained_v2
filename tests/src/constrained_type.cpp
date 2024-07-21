@@ -1,6 +1,7 @@
 #include <constrained_type.hpp>
 
 #include <iostream>
+#include <memory>
 
 #include <constrained/constrained_type.hpp>
 
@@ -364,5 +365,43 @@ namespace ct::test {
                 CHECK_FALSE(inv_vc.to_optional().has_value());
             }
         }
+
+        TEST_CASE("operators") {
+            constexpr auto is_even_ptr  = [](std::unique_ptr<int> const & x) -> bool {
+                return x && *x % 2 == 0;
+            };
+
+            constexpr auto is_even  = [](int x) -> bool {
+                return x % 2 == 0;
+            };
+
+            using even_opt = constrained_type<std::unique_ptr<int>, value_pack<is_even_ptr>, value_pack<[](auto&){}>>;
+            using even = constrained_type<int, value_pack<is_even>, value_pack<[](auto&){}>>;
+            even_opt mb_num{new int{42}};
+            even num{42};
+
+            static_assert(std::same_as<decltype(num.value()), decltype(*num)>);
+            static_assert(!std::same_as<decltype(mb_num.value()), decltype(*mb_num)>);
+
+            static_assert(std::same_as<decltype(num.operator->()), const int*>);
+
+            SUBCASE("operator*") {
+                CHECK(*mb_num == 42);
+                CHECK(*num == 42);
+            }
+
+            SUBCASE("operator*") {
+                
+                struct foo { int bar; };
+                using foo_ptr = constrained_type<std::unique_ptr<foo>, value_pack<>, value_pack<>>;
+                
+                foo_ptr p{new foo{42}};
+                CHECK(p->bar == 42);
+                CHECK(mb_num.operator->() == std::move(mb_num).value().get());
+            }
+        }
     }
+
+    std::optional<int> x{42};
+    auto c = x.value();
 } // namespace ct::test
