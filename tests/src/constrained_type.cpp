@@ -390,7 +390,7 @@ namespace ct::test {
                 CHECK(*num == 42);
             }
 
-            SUBCASE("operator*") {
+            SUBCASE("operator->") {
                 
                 struct foo { int bar; };
                 using foo_ptr = constrained_type<std::unique_ptr<foo>, value_pack<>, value_pack<>>;
