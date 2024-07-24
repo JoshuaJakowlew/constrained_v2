@@ -2,7 +2,7 @@
 
 #include <concepts>
 #include <utility>
-
+#include <optional>
 #include <iostream>
 
 #include <constrained/optimizer/constraints/optimize.hpp>
@@ -96,6 +96,24 @@ namespace ct {
 
     template <typename Pack, typename T>
     concept nothrow_validator_pack = nothrow_predicate_pack<Pack, T>;
+
+
+    template <typename T>
+    concept member_dereferenceable = requires (T x) { x.operator*(); };
+
+    template <typename T>
+    concept nothrow_member_dereferenceable =
+        member_dereferenceable<T>
+        and noexcept(std::declval<T>().operator*());
+
+    template <typename T>
+    concept member_accessible = requires (T x) { x.operator->(); };
+
+    template <typename T>
+    concept nothrow_member_accessible = 
+        member_accessible<T>
+        and noexcept(std::declval<T>().operator->());
+
 #pragma endregion
 
     struct nocheck {};
@@ -106,7 +124,8 @@ namespace ct {
         predicate_pack<T> ConstraintPack,
         fail_handler_pack<T> FailHandlerPack,
         validator_pack<T> ValidatorPack = ConstraintPack,
-        auto Eq = type_eq
+        auto Eq = type_eq,
+        bool disable_forwarding = false
     >
     class constrained_type
     {
@@ -170,8 +189,11 @@ namespace ct {
 
 #pragma region optimizing_copy_constructor
         template <predicate_pack<T> RhsConstraintPack>
-        constexpr constrained_type(constrained_type<T, RhsConstraintPack, FailHandlerPack, ValidatorPack> const & other)
-            noexcept(std::is_nothrow_copy_constructible_v<T>)
+        constexpr constrained_type(constrained_type<T, RhsConstraintPack, FailHandlerPack, ValidatorPack, Eq> const & other)
+            noexcept(
+                std::is_nothrow_copy_constructible_v<T> and
+                noexcept(check_from_to<RhsConstraintPack>())
+            )
             requires std::copy_constructible<T>
             : _value(other.value())
         {
@@ -181,12 +203,98 @@ namespace ct {
 
 #pragma region optimizing_move_constructor
         template <predicate_pack<T> RhsConstraintPack>
-        constexpr constrained_type(constrained_type<T, RhsConstraintPack, FailHandlerPack, ValidatorPack> && other)
-            noexcept(std::is_nothrow_move_constructible_v<T>)
+        constexpr constrained_type(constrained_type<T, RhsConstraintPack, FailHandlerPack, ValidatorPack, Eq> && other)
+            noexcept(
+                std::is_nothrow_move_constructible_v<T> and
+                noexcept(check_from_to<RhsConstraintPack>())
+            )
             requires std::move_constructible<T>
             : _value(std::move(other).value())
         {
             check_from_to<RhsConstraintPack>();
+        }
+#pragma endregion
+
+#pragma region copy_assignment
+        constexpr auto operator=(constrained_type const & rhs)
+            noexcept(std::is_nothrow_copy_assignable_v<T>)
+            -> constrained_type &
+            requires std::is_copy_assignable_v<T>
+        {
+            _value = rhs._value;
+            return *this;
+        }
+#pragma endregion
+
+#pragma region move_assignment
+        constexpr auto operator=(constrained_type && rhs)
+            noexcept(std::is_nothrow_move_assignable_v<T>)
+            -> constrained_type &
+            requires std::is_move_assignable_v<T>
+        {
+            _value = std::move(rhs).value();
+            return *this;
+        }
+#pragma endregion
+
+#pragma region wrapped_value_assignment
+        template <typename U>
+        constexpr auto operator=(U const & rhs)
+            noexcept(
+                std::is_nothrow_copy_assignable_v<T> and
+                noexcept(check(optimized_constraints{}))
+            )
+            -> constrained_type &
+            requires std::assignable_from<T, U const &>
+        {
+            _value = rhs;
+            check(optimized_constraints{});
+            return *this;
+        }
+
+        template <typename U>
+        constexpr auto operator=(U && rhs)
+            noexcept(
+                std::is_nothrow_move_assignable_v<T> and 
+                noexcept(check(optimized_constraints{}))
+            )
+            -> constrained_type &
+            requires std::assignable_from<T, U &&>
+                and (!std::is_reference_v<U>)
+        {
+            _value = std::move(rhs);
+            check(optimized_constraints{});
+            return *this;
+        }
+#pragma endregion
+
+#pragma region optimizing_copy_assignment
+        template <predicate_pack<T> RhsConstraintPack>
+        constexpr auto operator=(constrained_type<T, RhsConstraintPack, FailHandlerPack, ValidatorPack, Eq> const & other)
+            noexcept(
+                std::is_nothrow_copy_assignable_v<T> and
+                noexcept(check_from_to<RhsConstraintPack>())
+            )
+            -> constrained_type &
+        {
+            _value = other.value();
+            check_from_to<RhsConstraintPack>();
+            return *this;
+        }
+#pragma endregion
+
+#pragma region optimizing_move_assignment
+        template <predicate_pack<T> RhsConstraintPack>
+        constexpr auto operator=(constrained_type<T, RhsConstraintPack, FailHandlerPack, ValidatorPack, Eq> && other)
+            noexcept(
+                std::is_nothrow_move_assignable_v<T> and
+                noexcept(check_from_to<RhsConstraintPack>())
+            )
+            -> constrained_type &
+        {
+            _value = std::move(other).value();
+            check_from_to<RhsConstraintPack>(_value);
+            return *this;
         }
 #pragma endregion
 
@@ -202,12 +310,136 @@ namespace ct {
             return valid();
         }
 
+#pragma region value
         constexpr auto value() const & noexcept -> T const &
         { return _value; }
         constexpr auto value() && noexcept -> T &&
         { return std::move(_value); }
         constexpr auto value() const && noexcept -> T const &&
         { return std::move(_value); }
+#pragma endregion value
+
+#pragma region dereference_operators
+        static constexpr bool forwarding_member_dereference = member_dereferenceable<T> && !disable_forwarding;
+        static constexpr bool non_forwarding_dereference = !forwarding_member_dereference;
+
+        constexpr decltype(auto) operator*() const &
+            noexcept(nothrow_member_dereferenceable<T>)
+            requires forwarding_member_dereference
+        { return _value.operator*(); }
+
+        constexpr decltype(auto) operator*() &&
+            noexcept(nothrow_member_dereferenceable<T>)
+            requires forwarding_member_dereference
+        { return std::move(_value).operator*(); }
+
+        constexpr decltype(auto) operator*() const &&
+            noexcept(nothrow_member_dereferenceable<T>)
+            requires forwarding_member_dereference
+        { return std::move(_value).operator*(); }
+
+        constexpr auto operator*() const & noexcept -> T const &
+            requires non_forwarding_dereference
+        { return _value; }
+        constexpr auto operator*() const && noexcept -> T const &&
+            requires non_forwarding_dereference
+        { return std::move(_value); }
+        constexpr auto operator*() && noexcept -> T &&
+            requires non_forwarding_dereference
+        { return std::move(_value); }
+#pragma endregion
+
+#pragma region access_operators
+    static constexpr bool forwarding_member_access = member_accessible<T> && !disable_forwarding;
+    static constexpr bool non_forwarding_access = !forwarding_member_access;
+
+    constexpr decltype(auto) operator->() const &
+        noexcept(nothrow_member_accessible<T>)
+        requires forwarding_member_access
+    { return _value.operator->(); }
+    constexpr decltype(auto) operator->() &&
+        noexcept(nothrow_member_accessible<T>)
+        requires forwarding_member_access
+    { return std::move(_value).operator->(); }
+    constexpr decltype(auto) operator->() const &&
+        noexcept(nothrow_member_accessible<T>)
+        requires forwarding_member_access
+    { return std::move(_value).operator->(); }
+
+    [[nodiscard]] constexpr auto operator->() const & noexcept -> const T*
+        requires non_forwarding_access
+    { return &_value; }
+
+    [[nodiscard]] constexpr auto operator->() && noexcept -> T*
+        requires non_forwarding_access
+    { return &_value; }
+
+    [[nodiscard]] constexpr auto operator->() const && noexcept -> const T*
+        requires non_forwarding_access
+    { return &_value; }
+
+#pragma endregion
+
+#pragma region value_or
+        template <std::convertible_to<T> U>
+        constexpr auto value_or(U && default_value) const &
+            noexcept(noexcept(valid()) and std::is_nothrow_constructible_v<T, U>)
+            -> T
+        {
+            if (valid()) return _value;
+            return static_cast<T>(std::forward<U>(default_value));
+        }
+
+        template <std::convertible_to<T> U>
+        constexpr auto value_or(U && default_value) &&
+            noexcept(noexcept(valid()) and std::is_nothrow_constructible_v<T, U>)
+            -> T
+        {
+            if (valid()) return std::move(_value);
+            return static_cast<T>(std::forward<U>(default_value));
+        }
+#pragma endregion
+
+#pragma region to_optional
+        template <template <typename> typename Optional = std::optional>
+        constexpr auto to_optional() const &
+            noexcept(
+                noexcept(valid()) and
+                std::is_nothrow_constructible_v<Optional<T>, T const &>
+            )
+            -> Optional<T>
+            requires std::constructible_from<Optional<T>, T const &>
+        {
+            if (!valid()) return std::nullopt;
+            return Optional(_value);
+        }
+
+        template <template <typename> typename Optional = std::optional>
+        constexpr auto to_optional() &&
+            noexcept(
+                noexcept(valid()) and
+                std::is_nothrow_constructible_v<Optional<T>, T &&>
+            )
+            -> Optional<T>
+            requires std::constructible_from<Optional<T>, T &&>
+        {
+            if (!valid()) return std::nullopt;
+            return Optional(std::move(_value));
+        }
+
+        template <template <typename> typename Optional = std::optional>
+        constexpr auto to_optional() const &&
+            noexcept(
+                noexcept(valid()) and
+                std::is_nothrow_constructible_v<Optional<T>, T const &&>
+            )
+            -> Optional<T>
+            requires std::constructible_from<Optional<T>, T const &&>
+        {
+            if (!valid()) return std::nullopt;
+            return Optional(std::move(_value));
+        }
+#pragma endregion
     private:
         T _value{};
 
