@@ -238,26 +238,29 @@ namespace ct {
 #pragma endregion
 
 #pragma region wrapped_value_assignment
-        constexpr auto operator=(T const & rhs)
+        template <typename U>
+        constexpr auto operator=(U const & rhs)
             noexcept(
                 std::is_nothrow_copy_assignable_v<T> and
                 noexcept(check(optimized_constraints{}))
             )
             -> constrained_type &
-            requires std::is_copy_assignable_v<T>
+            requires std::assignable_from<T, U const &>
         {
             _value = rhs;
             check(optimized_constraints{});
             return *this;
         }
 
-        constexpr auto operator=(T && rhs)
+        template <typename U>
+        constexpr auto operator=(U && rhs)
             noexcept(
                 std::is_nothrow_move_assignable_v<T> and 
                 noexcept(check(optimized_constraints{}))
             )
             -> constrained_type &
-            requires std::is_move_assignable_v<T>
+            requires std::assignable_from<T, U &&>
+                and (!std::is_reference_v<U>)
         {
             _value = std::move(rhs);
             check(optimized_constraints{});
@@ -275,7 +278,7 @@ namespace ct {
             -> constrained_type &
         {
             _value = other.value();
-            check_from_to<RhsConstraintPack>(_value);
+            check_from_to<RhsConstraintPack>();
             return *this;
         }
 #pragma endregion
