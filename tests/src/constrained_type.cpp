@@ -41,7 +41,7 @@ namespace ct::test {
     constexpr auto gte_0 = [](auto const & x) { return x >= 0; };
     constexpr auto gt_0 = [](auto const & x) { return x > 0; };
 
-    TEST_SUITE("constrained_type constructors") {
+    TEST_SUITE("constrained_type constructors and assignments") {
         static bool fail_called = false;
         static bool check_called = false;
 
@@ -281,6 +281,194 @@ namespace ct::test {
             }
             SUBCASE("unsatisfied") {
                 unoptimized_short_string to(std::move(from_invalid));
+
+                CHECK_FALSE(check_called);
+                CHECK_FALSE(fail_called); // no need to re-check if from value is invalid as validators are the same
+                CHECK(check_count == 0);
+                CHECK(fail_count == 0);
+                
+                CHECK(to.value() == INVALID_VALUE);
+                CHECK_FALSE(to.valid());
+
+                CHECK(from_invalid.value() == moved_from);
+                CHECK(from_invalid.valid());
+            }
+        }
+
+        TEST_CASE("copy assignment") {
+            positive_int from_valid{42};
+            positive_int from_invalid{-42};
+            
+            positive_int to;
+
+            check_called = false;
+            fail_called = false;
+
+            SUBCASE("satisfied") {
+                to = from_valid;
+
+                CHECK_FALSE(check_called);
+                CHECK_FALSE(fail_called);
+
+                CHECK(to.value() == 42);
+                CHECK(to.valid());
+            }
+            SUBCASE("unsatisfied") {
+                to = from_invalid;
+
+                CHECK_FALSE(check_called);
+                CHECK_FALSE(fail_called);
+
+                CHECK(to.value() == -42);
+                CHECK_FALSE(to.valid());
+            }
+        }
+
+        TEST_CASE("move assignment") {
+            constexpr auto VALID_VALUE = "012345";
+            constexpr auto INVALID_VALUE = "0123456789abcdef";
+
+            std::string moved_from = VALID_VALUE;
+            std::string temp = std::move(moved_from);
+
+            short_string from_valid{VALID_VALUE};
+            short_string from_invalid{INVALID_VALUE};
+            
+            short_string to;
+
+            check_called = false;
+            fail_called = false;
+
+            SUBCASE("satisfied") {
+                to = std::move(from_valid);
+
+                CHECK_FALSE(check_called);
+                CHECK_FALSE(fail_called);
+                
+                CHECK(to.value() == VALID_VALUE);
+                CHECK(to.valid());
+
+                CHECK(from_valid.value() == moved_from);
+                CHECK(from_valid.valid());
+            }
+            SUBCASE("unsatisfied") {
+                to = std::move(from_invalid);
+
+                CHECK_FALSE(check_called);
+                CHECK_FALSE(fail_called);
+                
+                CHECK(to.value() == INVALID_VALUE);
+                CHECK_FALSE(to.valid());
+
+                CHECK(from_invalid.value() == moved_from);
+                CHECK(from_invalid.valid());
+            }
+        }
+
+        TEST_CASE("value assignment") {
+            check_called = false;
+            fail_called = false;
+
+            short_string x;
+
+            SUBCASE("satisfied") {
+                x = "012345";
+
+                CHECK(check_called);
+                CHECK_FALSE(fail_called);
+                CHECK(x.value() == "012345");
+                CHECK(x.valid());
+            }
+            SUBCASE("unsatisfied") {
+                x = "0123456789abcdef";
+
+                CHECK(check_called);
+                CHECK(fail_called);
+                CHECK(x.value() == "0123456789abcdef");
+                CHECK_FALSE(x.valid());
+            }
+        }
+
+        TEST_CASE("optimizing from-to copy assignment") {
+            constexpr auto VALID_VALUE = "012345";
+            constexpr auto INVALID_VALUE = "0123456789abcdef";
+
+            check_count = 0;
+            fail_count = 0;
+
+            short_string from_valid{VALID_VALUE};
+            short_string from_invalid{INVALID_VALUE};
+            
+            CHECK(check_count == 2);
+            CHECK(fail_count == 1);
+
+            unoptimized_short_string to;
+
+            check_called = false;
+            fail_called = false;
+
+            check_count = 0;
+            fail_count = 0;
+
+            SUBCASE("satisfied") {
+                to = from_valid;
+
+                CHECK_FALSE(check_called);
+                CHECK_FALSE(fail_called);
+                CHECK(check_count == 1);
+
+                CHECK(to.value() == VALID_VALUE);
+                CHECK(to.valid());
+            }
+            SUBCASE("unsatisfied") {
+                to = from_invalid;
+
+                CHECK_FALSE(check_called);
+                CHECK_FALSE(fail_called); // no need to re-check if from value is invalid as validators are the same
+                CHECK(check_count == 0);
+                CHECK(fail_count == 0);
+
+                CHECK(to.value() == INVALID_VALUE);
+                CHECK_FALSE(to.valid());
+            }
+        }
+
+        TEST_CASE("optimizing from-to move assignment") {
+            constexpr auto VALID_VALUE = "012345";
+            constexpr auto INVALID_VALUE = "0123456789abcdef";
+
+            std::string moved_from = VALID_VALUE;
+            std::string temp = std::move(moved_from);
+
+            check_count = 0;
+            fail_count = 0;
+
+            short_string from_valid{VALID_VALUE};
+            short_string from_invalid{INVALID_VALUE};
+            
+            CHECK(check_count == 2);
+            CHECK(fail_count == 1);
+
+            unoptimized_short_string to;
+
+            check_called = false;
+            fail_called = false;
+
+            check_count = 0;
+            fail_count = 0;
+
+            SUBCASE("satisfied") {
+                unoptimized_short_string to = std::move(from_valid);
+
+                CHECK_FALSE(check_called);
+                CHECK_FALSE(fail_called);
+                CHECK(check_count == 1);
+                
+                CHECK(to.value() == VALID_VALUE);
+                CHECK(to.valid());
+            }
+            SUBCASE("unsatisfied") {
+                unoptimized_short_string to = std::move(from_invalid);
 
                 CHECK_FALSE(check_called);
                 CHECK_FALSE(fail_called); // no need to re-check if from value is invalid as validators are the same
