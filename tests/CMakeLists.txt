@@ -21,6 +21,9 @@ add_executable(${PROJECT_NAME}-tests
     ${CMAKE_CURRENT_SOURCE_DIR}/src/value_pack/unique.cpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/src/optimizer/optimizer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/optimizer/constraints.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/optimizer/fail_handlers.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/optimizer/validators.cpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/src/constrained_type.cpp
 )
