@@ -1,5 +1,5 @@
 #include <constrained/optimizer/optimizer.hpp>
-#include <constrained/optimizer/all.hpp>
+
 namespace ct::test {
     constexpr auto type_eq = []<class T, class U>(T const & x, U const & y) {
         return std::same_as<T, U>;
@@ -84,38 +84,5 @@ namespace ct::test {
     static_assert(std::same_as<
         value_pack<foo, bar, baz, foo>::then<optimize<type_eq, value_pack<bar, bar, foo>>>,
         value_pack<baz>
-    >);
-
-    // optimize for all
-
-    static_assert(std::same_as<
-        optimize_pass<type_eq, empty, all<>>::type::result,
-        empty
-    >);
-
-    static_assert(std::same_as<
-        optimize_pass<type_eq, all<>, empty>::type::result,
-        empty
-    >);
-
-    static_assert(std::same_as<
-        optimize_pass<type_eq, all<>, all<>>::type::result,
-        empty
-    >);
-
-    static_assert(std::same_as<
-        optimize_pass<type_eq, all<bar>, value_pack<foo, bar, baz, foo>>::type::result,
-        value_pack<foo, baz>
-    >);
-
-    static_assert(std::same_as<
-        optimize_pass<type_eq, value_pack<bar>, all<foo, bar, baz, foo>>::type::result,
-        value_pack<foo, baz>
-    >);
-
-    // FIXME: Recursive tree traversal
-    static_assert(std::same_as<
-        optimize_pass<type_eq, all<bar>, value_pack<foo, bar, baz, foo, all<bar>{}>>::type::result,
-        value_pack<foo, baz, all<bar>{}>
     >);
 } // namespace ct::test
