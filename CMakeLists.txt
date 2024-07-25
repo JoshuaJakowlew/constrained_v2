@@ -6,6 +6,7 @@ project(constrained_type
 )
 
 option(BUILD_TESTS "Build tests" ON)
+option(BUILD_BENCHMARK "Build benchmark" ON)
 
 add_library(${PROJECT_NAME} INTERFACE)
 
@@ -25,4 +26,11 @@ if (BUILD_TESTS)
     add_subdirectory(tests)
 else()
     message(STATUS "Building tests is disabled")
+endif()
+
+if (BUILD_BENCHMARK)
+    message(STATUS "Building benchmark is enabled")
+    add_subdirectory(benchmark)
+else()
+    message(STATUS "Building benchmark is disabled")
 endif()
