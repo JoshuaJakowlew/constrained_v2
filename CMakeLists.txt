@@ -13,6 +13,7 @@ add_library(${PROJECT_NAME} INTERFACE)
 set_target_properties(${PROJECT_NAME} PROPERTIES
     CXX_STANDARD          20
     CXX_STANDARD_REQUIRED TRUE
+    COMPILE_FLAGS "-ffunction-sections"
 )
 
 target_include_directories(${PROJECT_NAME}

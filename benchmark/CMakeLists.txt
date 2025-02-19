@@ -9,20 +9,23 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(nanobench)
 
-add_executable(${PROJECT_NAME}-benchmark
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp
-)
+function(add_benchmark target_name source_file)
+    set(BENCHMARK_NAME "${PROJECT_NAME}-benchmark-${target_name}")
+    set(BENCHMARK_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/src/${source_file}")
+    add_executable(${BENCHMARK_NAME} ${BENCHMARK_SOURCE})
+    target_include_directories(${BENCHMARK_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+    set_target_properties(${BENCHMARK_NAME} PROPERTIES
+        CXX_STANDARD 20
+        CXX_STANDARD_REQUIRED TRUE
+    )
+    target_link_libraries(${BENCHMARK_NAME}
+        ${PROJECT_NAME}
+        nanobench
+    )
+endfunction()
 
-target_include_directories(${PROJECT_NAME}-benchmark PRIVATE 
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-)
+add_benchmark(non_null-optional optional/non_null.cpp)
+add_benchmark(non_null-throwing throwing/non_null.cpp)
 
-set_target_properties(${PROJECT_NAME}-benchmark PROPERTIES
-    CXX_STANDARD          20
-    CXX_STANDARD_REQUIRED TRUE
-)
-
-target_link_libraries(${PROJECT_NAME}-benchmark
-    ${PROJECT_NAME}
-    nanobench
-)
+add_benchmark(bound_check-optional optional/bound_check.cpp)
+add_benchmark(bound_check-throwing throwing/bound_check.cpp)

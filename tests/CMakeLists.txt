@@ -4,6 +4,7 @@ FetchContent_Declare(
     doctest
     GIT_REPOSITORY "https://github.com/onqtam/doctest"
     GIT_TAG "master"
+    GIT_SHALLOW TRUE
 )
 
 FetchContent_MakeAvailable(doctest)
