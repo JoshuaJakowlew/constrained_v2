@@ -85,6 +85,7 @@ namespace ct {
         //
         // <0, 1>::then(concat<2, 3>) == <0, 1, 2, 3>
         template <class F>
+            requires traits::thenable<self, F>
         using then = F::template type<Xs...>;
     };
 
