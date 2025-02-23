@@ -6,12 +6,14 @@ project(constrained_type
 )
 
 option(BUILD_TESTS "Build tests" ON)
+option(BUILD_BENCHMARK "Build benchmark" ON)
 
 add_library(${PROJECT_NAME} INTERFACE)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
     CXX_STANDARD          20
     CXX_STANDARD_REQUIRED TRUE
+    COMPILE_FLAGS "-ffunction-sections"
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -25,4 +27,11 @@ if (BUILD_TESTS)
     add_subdirectory(tests)
 else()
     message(STATUS "Building tests is disabled")
+endif()
+
+if (BUILD_BENCHMARK)
+    message(STATUS "Building benchmark is enabled")
+    add_subdirectory(benchmark)
+else()
+    message(STATUS "Building benchmark is disabled")
 endif()

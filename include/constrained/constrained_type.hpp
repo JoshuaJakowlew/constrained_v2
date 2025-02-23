@@ -438,6 +438,14 @@ namespace ct {
             return Optional(std::move(_value));
         }
 #pragma endregion
+
+        template <auto Convert, typename U>
+        static constexpr auto from(U && rhs)
+            noexcept(noexcept(constrained_type{Convert(std::forward<U>(rhs))}))
+            -> constrained_type
+        {
+            return constrained_type{Convert(std::forward<U>(rhs))};
+        }
     private:
         T _value{};
 
@@ -482,5 +490,16 @@ namespace ct {
         {
             return (... && Vs(_value));
         }
+    };
+
+    template <typename From, typename To, auto Convert>
+    struct mapper
+    {
+        mapper(From && from) 
+            : to{Convert(std::forward<From>(from))}
+        {}
+        operator To() { return to; }
+
+        To to;
     };
 } // namespace ct

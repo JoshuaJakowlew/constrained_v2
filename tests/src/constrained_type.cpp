@@ -588,5 +588,19 @@ namespace ct::test {
                 CHECK(mb_num.operator->() == std::move(mb_num).value().get());
             }
         }
+
+        TEST_CASE("conversion") {
+            constexpr auto parse_int = [](std::string const & s) { return std::stoi(s); };
+            using parsable_int = mapper<std::string, even_int, parse_int>;
+
+            constexpr auto half_of = [](even_int x) -> int {
+                even_int const & i = x;
+                return *i / 2;
+            };
+
+            half_of(42);
+            half_of(parsable_int("42"));
+            half_of(even_int::from<parse_int>("42"));
+        }
     }
 } // namespace ct::test
