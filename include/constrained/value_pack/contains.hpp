@@ -13,7 +13,7 @@ namespace ct {
         using type = decltype([]{
             if constexpr (sizeof...(Xs) == 0) return value_pack<false>{};
             else return typename value_pack<Xs...>
-                ::template map<[](auto const & x) { return Eq(x, Needle); }>
+                ::template map<[](auto x) { return Eq(x, Needle); }>
                 ::template then<fold<std::logical_or<>{}>>{};
         }());
     };
