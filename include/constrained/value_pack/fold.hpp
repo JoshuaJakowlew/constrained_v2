@@ -2,26 +2,28 @@
 
 #include <constrained/value_pack/value_pack.hpp>
 
-namespace ct {
-    template <auto Add, auto Head, auto... Tail>
-    struct fold_of
+namespace ct::detail {
+    template <auto Reduce, auto Head, auto... Tail>
+    struct fold_impl
     {
-        static constexpr auto value = Add(Head, fold_of<Add, Tail...>::value);
+        static constexpr auto value = Reduce(Head, fold_impl<Reduce, Tail...>::value);
     };
 
-    template <auto Add, auto Head>
-    struct fold_of<Add, Head>
+    template <auto Reduce, auto Head>
+    struct fold_impl<Reduce, Head>
     {
         static constexpr auto value = Head;
     };
+}
 
-    template <auto Add>
+namespace ct {
+    template <auto Reduce>
     struct fold
     {
         template <auto... Xs>
         using type = decltype([]{
             if constexpr (sizeof...(Xs) == 0) return empty{};
-            else return value_pack<fold_of<Add, Xs...>::value>{};
+            else return value_pack<detail::fold_impl<Reduce, Xs...>::value>{};
         }());
     };
 } // namespace ct
