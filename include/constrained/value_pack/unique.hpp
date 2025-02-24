@@ -9,7 +9,7 @@ namespace ct::detail {
     template <auto Eq, auto X>
     struct not_equal
     {
-        static constexpr auto func = [](auto const & y) {
+        consteval bool operator()(auto const & y) const {
             return !Eq(X, y);
         };
     };
@@ -29,7 +29,7 @@ namespace ct::detail {
     {
         using filtered_tail = value_pack<Tail...>
             ::template then<
-                filter<not_equal<Eq, Head>::func>
+                filter<not_equal<Eq, Head>{}>
             >;
 
         using unique_call = filtered_tail
