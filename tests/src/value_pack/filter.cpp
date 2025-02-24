@@ -2,23 +2,25 @@
 
 #include <constrained/value_pack/filter.hpp>
 
-namespace ct::test {
-    using p1 = value_pack<0>;
-    using p2 = value_pack<1>;
-    using p3 = value_pack<0, 1, 1, 2, 3, 4, 5>;
+namespace ct::test::filter_ {
+    consteval void test_filter() {
+        constexpr auto is_even = [](auto x) {
+            return x % 2 == 0;
+        };
 
-    constexpr auto is_even = [](auto x)
-    {
-        return x % 2 == 0;
-    };
-    
-    static_assert(std::same_as<filter_of<is_even>::type, value_pack<>>);
-    static_assert(std::same_as<filter_of<is_even, 0>::type, value_pack<0>>);
-    static_assert(std::same_as<filter_of<is_even, 1>::type, value_pack<>>);
-    static_assert(std::same_as<filter_of<is_even, 0, 1, 1, 2, 3, 4, 5>::type, value_pack<0, 2, 4>>);
+        // filter even [] = []
+        static_assert(std::same_as<empty::then<filter<is_even>>, empty>);
+        
+        // filter even [1] = []
+        static_assert(std::same_as<value_pack<1>::then<filter<is_even>>, empty>);
+        // filter even [2] = [2]
+        static_assert(std::same_as<value_pack<2>::then<filter<is_even>>, value_pack<2>>);
 
-    static_assert(std::same_as<empty::then<filter<is_even>>, value_pack<>>);
-    static_assert(std::same_as<p1::then<filter<is_even>>, value_pack<0>>);
-    static_assert(std::same_as<p2::then<filter<is_even>>, value_pack<>>);
-    static_assert(std::same_as<p3::then<filter<is_even>>, value_pack<0, 2, 4>>);
-} // namespace ct::test
+        // filter even [evens] = [evens]
+        static_assert(std::same_as<value_pack<2, 4, 6, 4, 2>::then<filter<is_even>>, value_pack<2, 4, 6, 4, 2>>);
+        // filter even [odds] = []
+        static_assert(std::same_as<value_pack<1, 3, 5, 7, 9>::then<filter<is_even>>, empty>);
+        // filter even [1, 2, 3, 4, 5] = [2, 4]
+        static_assert(std::same_as<value_pack<1, 2, 3, 4, 5>::then<filter<is_even>>, value_pack<2, 4>>);
+    }
+} // namespace ct::test::filter_
