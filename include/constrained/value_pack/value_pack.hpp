@@ -90,10 +90,4 @@ namespace ct {
     };
 
     using empty = value_pack<>;
-
-    template <typename T>
-    struct is_value_pack : std::false_type {};
-
-    template <auto... Xs>
-    struct is_value_pack<value_pack<Xs...>> : std::true_type {};
 } // namespace ct
