@@ -6,51 +6,32 @@
 
 #include <constrained/value_pack/contains.hpp>
 #include <constrained/value_pack/concat.hpp>
+#include <constrained/value_pack/filter.hpp>
 
 namespace ct::detail {
-    template <auto Eq, auto... Xs>
-    struct diff_impl {};
-
-    template <auto Eq, auto Head, auto... Tail>
-    struct diff_impl<Eq, Head, Tail...>
+    template <auto Eq, auto... Ys>
+    struct not_in
     {
-    private:
-        template <auto... Ys>
-        using head = std::conditional_t<
-            value_pack<Ys...>
-                ::template then<contains<Head, Eq>>
-                ::unwrap,
-            empty,
-            value_pack<Head>    
-        >;
-
-        template <auto... Ys>
-        using tail = diff_impl<Eq, Tail...>
-            ::template type<Ys...>;
-
-    public:
-        template <auto... Ys>
-        using type = head<Ys...>::template then<concat_pack<tail<Ys...>>>;
+        template <auto X>
+        constexpr bool operator()(value_pack<X>) const {
+            return !value_pack<Ys...>
+                ::template then<contains<X, Eq>>
+                ::unwrap;
+        }
     };
 
-    template <auto Eq, auto Head>
-    struct diff_impl<Eq, Head>
+    struct lift
     {
-        template <auto... Ys>
-        using type = std::conditional_t<
-            value_pack<Ys...>
-                ::template then<contains<Head, Eq>>
-                ::unwrap,
-            empty,
-            value_pack<Head>    
-        >;
+        template <auto... Xs>
+        using type = value_pack<value_pack<Xs>{}...>;
     };
 
-    template <auto Eq>
-    struct diff_impl<Eq>
+    // value_pack<X1>{}, ..., value_pack<Xn> -> value_pack<X1, ..., Xn>
+    struct unlift
     {
-        template <auto... Ys>
-        using type = empty;
+        template <auto... Xs>
+            requires (traits::unwrappable<decltype(Xs)> && ...)
+        using type = value_pack<decltype(Xs)::unwrap...>;
     };
 } // namespace ct::detail
 
@@ -59,9 +40,12 @@ namespace ct {
     struct diff
     {
         template <auto... Xs>
-        using type = detail::diff_impl<Eq, Xs...>::template type<Ys...>;
+        using type = value_pack<Xs...>
+            ::template then<detail::lift>
+            ::template then<filter<detail::not_in<Eq, Ys...>{}>>
+            ::template then<detail::unlift>;
     };
-
+    
     template <auto... Ys>
     using diff_by_eq = diff<std::equal_to<>{}, Ys...>;
 } // namespace ct
